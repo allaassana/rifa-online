@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PAROQUIA SANTA CATARINA / Centro Pastoral Santa Ana & São Joaquim - Admin</title>
+<style>
+  :root{--brand:#2c3e50;--available:#2ecc71;--sold:#7f8c8d;--winner:gold}
+  body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f5f5f5}
+  header{background:var(--brand);color:#fff;padding:18px;text-align:center}
+  .wrap{display:flex;gap:18px;padding:18px}
+  .left{width:70%}
+  .right{width:30%;background:#fff;padding:14px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.06)}
+  .grid{display:grid;grid-template-columns:repeat(15,1fr);gap:6px}
+  .ticket{padding:8px;border-radius:6px;text-align:center;font-weight:bold;color:#fff;cursor:pointer}
+  .ticket.available{background:var(--available)}
+  .ticket.sold{background:var(--sold);cursor:default}
+  .ticket.winner{background:var(--winner);color:#000}
+  .panel h3{margin-top:0}
+  .btn{display:inline-block;padding:8px 10px;border-radius:6px;border:none;background:var(--brand);color:#fff;cursor:pointer;margin:6px 4px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px;border-bottom:1px solid #eee}
+  /* modal */
+  .modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center}
+  .modal .box{background:#fff;padding:18px;border-radius:8px;width:520px;max-width:95%}
+  label{display:block;margin-top:8px;font-size:13px}
+  input,textarea,select{width:100%;padding:8px;margin-top:6px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box}
+  .thumb{max-width:160px;max-height:100px;margin-top:8px}
+  .history{max-height:200px;overflow:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>PAROQUIA SANTA CATARINA / Centro Pastoral Santa Ana & São Joaquim</h1>
+  <p style="margin:6px 0 0">Painel do Proprietário — Gestão da Rifa (120 bilhetes)</p>
+</header>
+<div class="wrap">
+  <div class="left">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+      <button class="btn" id="exportCsvBtn">Exportar CSV</button>
+      <button class="btn" id="exportJsonBtn">Exportar JSON</button>
+      <button class="btn" id="drawBtn">Sortear Vencedor</button>
+      <button class="btn" id="resetBtn" style="background:#c0392b">Reiniciar</button>
+      <div style="margin-left:auto;font-weight:bold">Vendidos: <span id="soldCount">0</span> / 120</div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div style="margin-top:14px;background:#fff;padding:12px;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,0.04)}">
+      <h3>Histórico de Vencedores</h3>
+      <div class="history" id="history"></div>
+    </div>
+  </div>
+
+  <div class="right panel">
+    <h3>Detalhes / Ações</h3>
+    <p>Seleciona um bilhete na grelha para ver ou editar o comprador.</p>
+    <div id="detailBox">Nenhum bilhete selecionado</div>
+  </div>
+</div>
+
+<!-- Modal para editar/ver comprador -->
+<div class="modal" id="modal">
+  <div class="box">
+    <h3>Bilhete <span id="mId"></span></h3>
+    <label>Nome</label><input id="mNome" />
+    <label>Telefone</label><input id="mTel" />
+    <label>Email</label><input id="mEmail" />
+    <label>Data Nasc</label><input id="mNasc" type="date" />
+    <label>Cidade</label><input id="mCidade" />
+    <label>País</label><input id="mPais" />
+    <label>Feedback</label><textarea id="mFeedback" maxlength="500"></textarea>
+    <div id="mCompArea"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+      <button class="btn" id="mSave">Guardar</button>
+      <button class="btn" id="mDelete" style="background:#c0392b">Eliminar</button>
+      <button class="btn" id="mClose" style="background:#7f8c8d">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const TOTAL = 120;
+  let rifas = JSON.parse(localStorage.getItem('rifas_data_v1') || '{}');
+  if(!rifas.admin) rifas.admin = {};
+  if(!rifas.history) rifas.history = [];
+
+  const grid = document.getElementById('grid');
+  const soldCountEl = document.getElementById('soldCount');
+  const detailBox = document.getElementById('detailBox');
+  const modal = document.getElementById('modal');
+  const mId = document.getElementById('mId');
+  const mNome = document.getElementById('mNome');
+  const mTel = document.getElementById('mTel');
+  const mEmail = document.getElementById('mEmail');
+  const mNasc = document.getElementById('mNasc');
+  const mCidade = document.getElementById('mCidade');
+  const mPais = document.getElementById('mPais');
+  const mFeedback = document.getElementById('mFeedback');
+  const mCompArea = document.getElementById('mCompArea');
+  const mSave = document.getElementById('mSave');
+  const mDelete = document.getElementById('mDelete');
+  const mClose = document.getElementById('mClose');
+
+  function save(){ localStorage.setItem('rifas_data_v1', JSON.stringify(rifas)); }
+  function countSold(){ return Object.keys(rifas.admin).length; }
+  function updateCounters(){ soldCountEl.innerText = countSold(); }
+
+  function renderGrid(){ grid.innerHTML = '';
+    for(let i=1;i<=TOTAL;i++){
+      const d = document.createElement('div');
+      const data = rifas.admin[i] || null;
+      d.className = 'ticket ' + (data ? 'sold' : 'available') + (rifas.winner==i? ' winner':'');
+      d.innerText = i;
+      d.onclick = ()=>openModal(i);
+      grid.appendChild(d);
+    }
+    updateCounters();
+  }
+
+  function openModal(id){
+    const data = rifas.admin[id] || null;
+    mId.innerText = id;
+    mNome.value = data ? data.nome || '': '';
+    mTel.value = data ? data.telefone || '': '';
+    mEmail.value = data ? data.email || '': '';
+    mNasc.value = data ? data.nasc || '': '';
+    mCidade.value = data ? data.cidade || '': '';
+    mPais.value = data ? data.pais || '': '';
+    mFeedback.value = data ? data.feedback || '': '';
+    mCompArea.innerHTML = '';
+    if(data && data.comp){
+      const img = document.createElement('img'); img.src = data.comp; img.className='thumb'; mCompArea.appendChild(img);
+      const a = document.createElement('a'); a.href = data.comp; a.target='_blank'; a.innerText='Abrir comprovativo'; a.style.display='block'; mCompArea.appendChild(a);
+    }
+    modal.style.display='flex';
+    detailBox.innerHTML = `Bilhete ${id} — ${data? ('Vendido a ' + (data.nome||'--')) : 'Disponível'}`;
+  }
+
+  mClose.onclick = ()=>{ modal.style.display='none'; }
+
+  mSave.onclick = ()=>{
+    const id = parseInt(mId.innerText,10);
+    rifas.admin[id] = {
+      nome: mNome.value,
+      telefone: mTel.value,
+      email: mEmail.value,
+      nasc: mNasc.value,
+      cidade: mCidade.value,
+      pais: mPais.value,
+      feedback: mFeedback.value,
+      comp: (rifas.admin[id] && rifas.admin[id].comp) ? rifas.admin[id].comp : null,
+      preco: 20
+    };
+    save(); renderGrid(); modal.style.display='none'; alert('Guardado');
+  }
+
+  mDelete.onclick = ()=>{
+    const id = parseInt(mId.innerText,10);
+    if(!confirm('Eliminar compra deste bilhete?')) return;
+    delete rifas.admin[id]; save(); renderGrid(); modal.style.display='none'; alert('Eliminado');
+  }
+
+  // Export CSV/JSON
+  function exportCSV(){
+    const rows = [['bilhete','nome','telefone','email','nasc','cidade','pais','preco']];
+    for(let i=1;i<=TOTAL;i++){
+      const d = rifas.admin[i] || {};
+      rows.push([i, d.nome||'', d.telefone||'', d.email||'', d.nasc||'', d.cidade||'', d.pais||'', d.preco||'']);
+    }
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join("\n");
+    const blob = new Blob([csv], { type:'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'rifa_export.csv'; a.click(); URL.revokeObjectURL(url)(url);
+  }
+
+  function exportJSON(){
+    const out = {admin:rifas.admin, history:rifas.history || []};
+    const blob = new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='rifa_export.json'; a.click(); URL.revokeObjectURL(url);
+  }
+
+  document.getElementById('exportCsvBtn').onclick = exportCSV;
+  document.getElementById('exportJsonBtn').onclick = exportJSON;
+
+  // Sorteio: apenas quando todos vendidos
+  document.getElementById('drawBtn').onclick = ()=>{
+    if(countSold() !== TOTAL) return alert('Só é possível sortear quando todos os bilhetes estiverem vendidos.');
+    // escolhe aleatório entre os bilhetes vendidos
+    const soldIds = Object.keys(rifas.admin).map(x=>parseInt(x,10));
+    const winner = soldIds[Math.floor(Math.random()*soldIds.length)];
+    rifas.winner = winner;
+    rifas.history = rifas.history || [];
+    rifas.history.unshift({id:winner, at:new Date().toISOString(), buyer: rifas.admin[winner] || null});
+    save(); renderGrid(); renderHistory(); alert('Vencedor: ' + winner);
+  }
+
+  document.getElementById('resetBtn').onclick = ()=>{
+    if(countSold() !== TOTAL) return alert('Só é possível reiniciar quando todos os bilhetes estiverem vendidos.');
+    if(!confirm('Reiniciar todos os dados da rifa? Isto eliminará todos os compradores e vencedores.')) return;
+    rifas.admin = {}; rifas.history = []; delete rifas.winner; save(); renderGrid(); renderHistory(); alert('Dados reiniciados');
+  }
+
+  function renderHistory(){
+    const el = document.getElementById('history'); el.innerHTML='';
+    (rifas.history||[]).forEach(h=>{
+      const div = document.createElement('div');
+      const name = h.buyer && h.buyer.nome ? h.buyer.nome : 'N/A';
+      div.innerHTML = `<strong>#${h.id}</strong> — ${name} — ${new Date(h.at).toLocaleString()}`;
+      el.appendChild(div);
+    });
+  }
+
+  renderGrid(); renderHistory();
+
+  // show details on right panel when clicking a ticket
+  function openModalAndPanel(id){
+    openModal(id);
+    // also update right panel
+    const data = rifas.admin[id] || null;
+    if(data){
+      detailBox.innerHTML = `<strong>Bilhete ${id}</strong><br>Name: ${data.nome||''}<br>Tel: ${data.telefone||''}<br>Email: ${data.email||''}<br><br><button class='btn' onclick='copyToClipboard(${id})'>Copiar contatos</button>`;
+    } else {
+      detailBox.innerHTML = `Bilhete ${id} — Disponível`;
+    }
+  }
+
+  // replace grid onclick handlers to call openModalAndPanel
+  // (we will re-render to ensure handler used)
+  grid.addEventListener('click', (e)=>{
+    const t = e.target; if(t && t.classList.contains('ticket')){
+      const id = parseInt(t.innerText,10); openModalAndPanel(id);
+    }
+  });
+
+  // helper to copy contacts
+  window.copyToClipboard = function(id){
+    const d = rifas.admin[id] || {}; const text = `Bilhete ${id}
+Nome: ${d.nome||''}
+Tel: ${d.telefone||''}
+Email: ${d.email||''}`;
+    navigator.clipboard.writeText(text).then(()=>alert('Copiado para o clipboard'));
+  }
+
+});
+</script>
+</body>
+</html>

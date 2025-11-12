@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rota Nice/Praia/Nice - Mobilização de Recursos</title>
+<style>
+  body { font-family: Arial, sans-serif; background:#f7f7f7; margin:0; padding:0; }
+  header { background:#2c3e50; color:white; padding:20px; text-align:center; }
+  .container { max-width:1100px; margin:auto; padding:20px; }
+  .grid { display:grid; grid-template-columns: repeat(15, 1fr); gap:6px; margin-top:12px; }
+  .ticket { padding:10px; background:#2ecc71; text-align:center; cursor:pointer; border-radius:4px; color:white; font-weight:bold; user-select:none; }
+  .ticket.sold { background:#7f8c8d; cursor:not-allowed; }
+  .ticket.winner { background:gold; color:black; }
+  .form-box { background:white; padding:18px; border-radius:8px; margin-top:18px; box-shadow:0 0 10px rgba(0,0,0,0.06); }
+  input, textarea { width:100%; padding:8px; margin:8px 0; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; }
+  button { padding:10px 14px; background:#2c3e50; color:white; border:none; border-radius:5px; cursor:pointer; }
+  .info-box { background:white; padding:15px; border-radius:8px; margin-top:14px; box-shadow:0 0 8px rgba(0,0,0,0.04); }
+  .small { font-size:13px; color:#555; }
+  .counters { display:flex; gap:12px; margin-top:10px; align-items:center; }
+  .counter { background:#ecf0f1; padding:8px 12px; border-radius:6px; font-weight:bold; }
+  #compPreview { display:none; max-width:100%; margin-top:8px; border-radius:4px; }
+  .modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center}
+  .modal .box{background:#fff;padding:18px;border-radius:8px;width:420px;max-width:95%;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Rota Nice/Praia/Nice</h1>
+  <h3>Mobilização de recursos – Centro Pastoral Santa Ana & São Joaquim</h3>
+</header>
+<div class="container">
+  <h2>Escolha o seu bilhete (20€)</h2>
+  <div class="counters">
+    <div class="counter">Vendidos: <span id="soldCount">0</span></div>
+    <div class="counter">Disponíveis: <span id="availCount">120</span></div>
+  </div>
+
+  <div id="ticketGrid" class="grid" aria-label="Grelha de bilhetes"></div>
+
+  <div id="formArea" class="form-box" style="display:none;">
+    <h3>Comprar Bilhete Nº <span id="ticketNumber"></span></h3>
+    <label>Nome *</label><input id="nome" required />
+    <label>Telefone *</label><input id="tel" required />
+    <label>Email *</label><input id="email" type="email" required />
+    <label>Data de Nascimento *</label><input id="nasc" type="date" required />
+    <label>Cidade *</label><input id="cidade" required />
+    <label>País *</label><input id="pais" required />
+    <label>Reclamações / Sugestões (500 máx.)</label>
+    <textarea id="feedback" maxlength="500"></textarea>
+    <label>Comprovativo *</label>
+    <input id="comp" type="file" accept="image/*" />
+    <img id="compPreview" alt="Pré-visualização do comprovativo" />
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button id="confirmBtn">Confirmar Compra</button>
+      <button id="cancelBtn" style="background:#7f8c8d;">Cancelar</button>
+    </div>
+  </div>
+
+  <div id="receiptBox" class="form-box" style="display:none; margin-top:20px;">
+    <h3>✅ Recibo da Compra</h3>
+    <p><strong>Bilhete:</strong> <span id="rBilhete"></span></p>
+    <p><strong>Nome:</strong> <span id="rNome"></span></p>
+    <p><strong>Telefone:</strong> <span id="rTel"></span></p>
+    <p><strong>Email:</strong> <span id="rEmail"></span></p>
+    <p><strong>Valor pago:</strong> 20€</p>
+    <div style="display:flex; gap:10px; margin-top:15px;">
+      <button id="printBtn">🖨️ Imprimir</button>
+      <button id="emailBtn">📧 Enviar Email</button>
+      <button id="waBtn">💬 Enviar WhatsApp</button>
+      <button id="downloadBtn">⬇️ Download</button>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <h3>Pontos Focais</h3>
+    <p><strong>Suíça:</strong> Silvestre Ledo Pontes — telefone: 0041767689933 — email: deustenstallone@gmail.com</p>
+    <p><strong>Holanda:</strong> Cecilia — telefone: 0618223937 — email: Cdaveiga@hotmail.nl</p>
+    <p><strong>Paris:</strong> Neusa — telefone: (fornecido localmente) — email: neusav152@gmail.com</p>
+    <p><strong>Nice/Cannes:</strong> Maria — telefone: 0621885006 — email: furtadovarelamaria@gmail.com</p>
+  </div>
+
+  <div class="info-box">
+    <h3>Dados Bancários</h3>
+    <p><strong>PARÓQUIA SANTA CATARINA – ASSOMADA, CABO VERDE</strong></p>
+
+    <p><strong>BCA – Banco Comercial do Atlântico</strong><br>
+    CLIENTE: 2544214<br>
+    CONTA DEPÓSITO À ORDEM: 254421410001<br>
+    NIB: 0003 0000 02544214 101 76<br>
+    IBAN: CV64 0003 0000 02544214 101 76<br>
+    SWIFT: BCATCVCV<br>
+    Agência: Santa Catarina – Santiago</p>
+
+    <p><strong>CECV – Caixa Económica</strong><br>
+    CONTA À ORDEM: 384413710002<br>
+    NIB: 0002 0000 03844137 102 02<br>
+    IBAN: CV64 0002 0000 03844137 102 02<br>
+    SWIFT/BIC: CXECCVCV</p>
+
+    <p><strong>Mais informações:</strong><br>
+    Ana Maria Carvalho — dinaleia@hotmail.com<br>
+    Esmeraldo Borges — miraborges10@hotmail.com</p>
+
+    <button onclick="window.open('https://drive.google.com/file/d/1TeVBGckN8YbeV2g_-cvc-qTAL_SoVhso/view?usp=sharing','_blank')">Ver Regulamento</button>
+  </div>
+
+  <button id="viewReceiptBtn" style="margin-top:20px; padding:10px 14px; background:#27ae60; color:white; border:none; border-radius:6px; cursor:pointer; display:none;">Ver Recibo</button>
+
+</div>
+
+<!-- Modal Recibo -->
+<div id="receiptModal" class="modal">
+  <div class="box">
+    <h3>Recibo da Compra</h3>
+    <p><strong>Bilhete:</strong> <span id="rmBilhete"></span></p>
+    <p><strong>Nome:</strong> <span id="rmNome"></span></p>
+    <p><strong>Telefone:</strong> <span id="rmTel"></span></p>
+    <p><strong>Email:</strong> <span id="rmEmail"></span></p>
+    <p><strong>Valor pago:</strong> 20€</p>
+    <div style="margin-top:15px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="rmDownload">⬇️ PDF</button>
+      <button id="rmEmail">📧 Email</button>
+      <button id="rmWhats">💬 WhatsApp</button>
+      <button id="rmClose" style="background:#7f8c8d;">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const TOTAL = 120;
+  let rifas = JSON.parse(localStorage.getItem('rifas_data_v1') || '{}');
+  if(!rifas.admin) rifas.admin = {};
+
+  // correctly declare lastReceiptData
+  let lastReceiptData = null;
+
+  const grid = document.getElementById('ticketGrid');
+  const soldCountEl = document.getElementById('soldCount');
+  const availCountEl = document.getElementById('availCount');
+  const formArea = document.getElementById('formArea');
+  const ticketNumberEl = document.getElementById('ticketNumber');
+  const compInput = document.getElementById('comp');
+  const compPreview = document.getElementById('compPreview');
+  const confirmBtn = document.getElementById('confirmBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const viewReceiptBtn = document.getElementById('viewReceiptBtn');
+  const receiptModal = document.getElementById('receiptModal');
+  const rmBilhete = document.getElementById('rmBilhete');
+  const rmNome = document.getElementById('rmNome');
+  const rmTel = document.getElementById('rmTel');
+  const rmEmail = document.getElementById('rmEmail');
+  const rmDownload = document.getElementById('rmDownload');
+  const rmEmailBtn = document.getElementById('rmEmail');
+  const rmWhats = document.getElementById('rmWhats');
+  const rmClose = document.getElementById('rmClose');
+  const receiptBox = document.getElementById('receiptBox');
+
+  function save(){ localStorage.setItem('rifas_data_v1', JSON.stringify(rifas)); }
+  function countSold(){ return Object.keys(rifas.admin).length; }
+  function updateCounters(){ if(soldCountEl) soldCountEl.innerText = countSold(); if(availCountEl) availCountEl.innerText = TOTAL - countSold(); }
+
+  function loadGrid(){
+    if(!grid) return;
+    grid.innerHTML = '';
+    for(let i = 1; i <= TOTAL; i++){
+      const d = document.createElement('div');
+      d.className = 'ticket';
+      if(rifas.admin[i]) d.classList.add('sold');
+      d.innerText = i;
+      d.onclick = () => openForm(i);
+      grid.appendChild(d);
+    }
+    updateCounters();
+  }
+
+  function openForm(id){
+    if(rifas.admin[id]) return alert('Este bilhete já foi comprado.');
+    // do not clear lastReceiptData when opening form
+    if(ticketNumberEl) ticketNumberEl.innerText = id;
+    if(formArea) formArea.style.display = 'block';
+    window.scrollTo({ top: formArea.offsetTop, behavior:'smooth' });
+  }
+
+  function cancelForm(){
+    // keep lastReceiptData intact so "Ver Recibo" remains available after purchase
+    if(formArea) formArea.style.display = 'none';
+    if(compPreview){ compPreview.src = ''; compPreview.style.display = 'none'; }
+    ['nome','tel','email','nasc','cidade','pais','feedback'].forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
+    if(compInput) compInput.value = '';
+    if(receiptBox) receiptBox.style.display = 'none';
+  }
+
+  if(compInput){
+    compInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if(!file){ if(compPreview) compPreview.style.display = 'none'; return; }
+      const reader = new FileReader();
+      reader.onload = (x) => { if(compPreview){ compPreview.src = x.target.result; compPreview.style.display = 'block'; } };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function savePurchase(){
+    if(!ticketNumberEl) return;
+    const id = parseInt(ticketNumberEl.innerText,10);
+    if(!id) return alert('Bilhete inválido');
+
+    const nome = document.getElementById('nome')?.value?.trim();
+    const tel = document.getElementById('tel')?.value?.trim();
+    const email = document.getElementById('email')?.value?.trim();
+    const nasc = document.getElementById('nasc')?.value?.trim();
+    const cidade = document.getElementById('cidade')?.value?.trim();
+    const pais = document.getElementById('pais')?.value?.trim();
+    const feedback = document.getElementById('feedback')?.value?.trim();
+    const compFile = compInput && compInput.files && compInput.files[0];
+
+    if(!nome || !tel || !email || !nasc || !cidade || !pais || !compFile) return alert('Por favor, preencha todos os campos obrigatórios e carregue o comprovativo.');
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      rifas.admin[id] = { nome, telefone: tel, email, nasc, cidade, pais, feedback, comp: e.target.result, preco: 20 };
+      save(); loadGrid();
+      // prepara recibo e deixa o botão visível
+      lastReceiptData = { id, nome, telefone: tel, email, preco:20 };
+      if(viewReceiptBtn) viewReceiptBtn.style.display = 'inline-block';
+      if(receiptBox){ document.getElementById('rBilhete').innerText = id; document.getElementById('rNome').innerText = nome; document.getElementById('rTel').innerText = tel; document.getElementById('rEmail').innerText = email; receiptBox.style.display = 'block'; }
+      alert('✅ Bilhete comprado com sucesso!');
+      cancelForm();
+    };
+    reader.readAsDataURL(compFile);
+  }
+
+  if(confirmBtn) confirmBtn.addEventListener('click', savePurchase);
+  if(cancelBtn) cancelBtn.addEventListener('click', cancelForm);
+
+  // receipt modal functions
+  function showReceiptModal(data){ if(!data) return alert('Nenhum recibo disponível.'); lastReceiptData = data; rmBilhete.innerText = data.id; rmNome.innerText = data.nome; rmTel.innerText = data.telefone; rmEmail.innerText = data.email; receiptModal.style.display = 'flex'; }
+  function closeReceiptModal(){ receiptModal.style.display = 'none'; }
+  if(rmClose) rmClose.addEventListener('click', closeReceiptModal);
+
+  if(rmDownload){
+    rmDownload.addEventListener('click', ()=>{
+      if(!lastReceiptData) return;
+      // cria um ficheiro HTML com layout do recibo para o utilizador poder imprimir/guardar como PDF
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>Recibo</title><style>body{font-family:Arial;padding:20px}h1{font-size:18px}</style></head><body><h1>Recibo da Rifa</h1><p><strong>Bilhete:</strong> ${lastReceiptData.id}</p><p><strong>Nome:</strong> ${lastReceiptData.nome}</p><p><strong>Telefone:</strong> ${lastReceiptData.telefone}</p><p><strong>Email:</strong> ${lastReceiptData.email}</p><p><strong>Valor Pago:</strong> 20€</p></body></html>`;
+      const blob = new Blob([html], {type: 'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `recibo_${lastReceiptData.id}.html`; a.click(); URL.revokeObjectURL(url);
+    });
+  }
+
+  if(rmEmailBtn){
+    rmEmailBtn.addEventListener('click', ()=>{
+      if(!lastReceiptData) return;
+      const subject = encodeURIComponent('Recibo da Rifa');
+      const body = encodeURIComponent(`Obrigado pela compra!%0A%0ABilhete: ${lastReceiptData.id}%0ANome: ${lastReceiptData.nome}%0ATelefone: ${lastReceiptData.telefone}%0AEmail: ${lastReceiptData.email}%0AValor: 20€`);
+      window.location.href = `mailto:${lastReceiptData.email}?subject=${subject}&body=${body}`;
+    });
+  }
+
+  if(rmWhats){
+    rmWhats.addEventListener('click', ()=>{
+      if(!lastReceiptData) return;
+      const phone = String(lastReceiptData.telefone || '').replace(/[^0-9+]/g,'');
+      const msg = encodeURIComponent(`Obrigado pela compra! O seu bilhete é o número ${lastReceiptData.id}.`);
+      window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+    });
+  }
+
+  if(viewReceiptBtn){ viewReceiptBtn.addEventListener('click', ()=>{ showReceiptModal(lastReceiptData); }); }
+
+  // inicializa grelha e contadores
+  loadGrid();
+  updateCounters();
+});
+</script>
+</body>
+</html>
